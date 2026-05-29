@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coketown Tycoon - Simulador de la Revolución Industrial</title>
+    <!-- Tailwind CSS para diseño moderno y responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        industrial: {
+                            900: '#1e1b18',
+                            800: '#3a3530',
+                            700: '#5c534c',
+                            600: '#80746a',
+                            500: '#a39589',
+                            amber: '#d97706',
+                            coal: '#111827',
+                            copper: '#b45309'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #12100e;
+        }
+        
+        .serif-title {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Animaciones para el humo de las chimeneas */
+        @keyframes puff {
+            0% {
+                transform: translateY(0) translateX(0) scale(0.6);
+                opacity: 0;
+            }
+            20% {
+                opacity: 0.6;
+            }
+            80% {
+                opacity: 0.2;
+            }
+            100% {
+                transform: translateY(-50px) translateX(15px) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .smoke-particle {
+            animation: puff 3s infinite linear;
+        }
+
+        .smoke-2 {
+            animation-delay: 1s;
+        }
+        .smoke-3 {
+            animation-delay: 2s;
+        }
+
+        /* Estilo de río contaminado */
+        .river-flow {
+            transition: fill 2s ease, stroke 2s ease;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col selection:bg-amber-600 selection:text-white">
+
+    <!-- HEADER DEL SIMULADOR -->
+    <header class="border-b border-industrial-700 bg-industrial-900/95 py-4 px-6 sticky top-0 z-40 shadow-lg backdrop-blur-md">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-industrial-copper/20 border border-industrial-copper rounded-lg text-amber-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold serif-title tracking-wider text-amber-500">COKETOWN TYCOON</h1>
+                    <p class="text-xs text-slate-400">Simulador Didáctico de la Revolución Industrial (1760 - 1850)</p>
+                </div>
+            </div>
+            
+            <!-- Indicador de Época / Década -->
+            <div class="flex items-center gap-2 bg-industrial-coal border border-industrial-700 px-4 py-2 rounded-xl">
+                <span class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Era Actual:</span>
+                <span id="current-decade-label" class="text-lg font-extrabold text-amber-500">1760</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- PANELES PRINCIPALES -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- COLUMNA IZQUIERDA: ESTADÍSTICAS Y PANEL DE CONTROL (7 Columnas en Desktop) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- MARCADORES Y RECURSOS -->
+            <section class="bg-industrial-900 border border-industrial-700 rounded-2xl p-4 md:p-6 shadow-xl">
+                <h2 class="text-xs text-slate-400 uppercase tracking-widest font-bold mb-4 flex items-center gap-2">
+                    <span>📊 Estado de la Nación</span>
+                    <span class="h-px bg-industrial-700 flex-1"></span>
+                </h2>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <!-- Capital / Economía -->
+                    <div class="bg-industrial-coal/50 border border-industrial-800 rounded-xl p-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-semibold flex items-center gap-1">🪙 Capital</span>
+                            <span id="stat-val-capital" class="text-sm font-bold text-emerald-400">50%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2">
+                            <div id="stat-bar-capital" class="bg-emerald-500 h-2 rounded-full transition-all duration-1000" style="width: 50%"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1">Presupuesto y rentabilidad</div>
+                    </div>
+
+                    <!-- Progreso Tecnológico -->
+                    <div class="bg-industrial-coal/50 border border-industrial-800 rounded-xl p-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-semibold flex items-center gap-1">⚙️ Progreso</span>
+                            <span id="stat-val-progress" class="text-sm font-bold text-blue-400">10%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2">
+                            <div id="stat-bar-progress" class="bg-blue-500 h-2 rounded-full transition-all duration-1000" style="width: 10%"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1">Industrialización y ciencia</div>
+                    </div>
+
+                    <!-- Bienestar Obrero -->
+                    <div class="bg-industrial-coal/50 border border-industrial-800 rounded-xl p-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-semibold flex items-center gap-1">👥 Obreros</span>
+                            <span id="stat-val-wellbeing" class="text-sm font-bold text-rose-400">60%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2">
+                            <div id="stat-bar-wellbeing" class="bg-rose-500 h-2 rounded-full transition-all duration-1000" style="width: 60%"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1">Consumo real y empleo formal</div>
+                    </div>
+
+                    <!-- Medio Ambiente -->
+                    <div class="bg-industrial-coal/50 border border-industrial-800 rounded-xl p-3 relative overflow-hidden group">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-xs text-slate-400 font-semibold flex items-center gap-1">🍃 Ecología</span>
+                            <span id="stat-val-ecology" class="text-sm font-bold text-teal-400">90%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2">
+                            <div id="stat-bar-ecology" class="bg-teal-500 h-2 rounded-full transition-all duration-1000" style="width: 90%"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-500 mt-1">Polución y salud urbana</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TARJETA DE DILEMA Y DECISIÓN -->
+            <section id="decision-panel" class="bg-industrial-900 border border-industrial-700 rounded-2xl p-6 shadow-xl flex-1 flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="dilemma-title-badge" class="text-xs font-bold uppercase tracking-widest bg-industrial-copper/20 border border-industrial-copper text-amber-500 px-3 py-1 rounded-full">Acontecimiento Crítico</span>
+                        <span id="dilemma-year" class="text-sm text-slate-400 font-mono">Año: 1760</span>
+                    </div>
+
+                    <h3 id="dilemma-title" class="text-xl md:text-2xl font-bold mb-3 text-white">Leyes de Cercamiento (Enclosures Acts)</h3>
+                    <p id="dilemma-desc" class="text-slate-300 leading-relaxed text-sm md:text-base mb-6">El Parlamento propone privatizar y cercar los campos abiertos y tierras comunales de los distritos rurales. Esto permitirá a los grandes terratenientes mecanizar la agricultura, pero dejará a los campesinos sin tierras comunes para pastar.</p>
+
+                    <!-- Acordeón Educativo / Contexto Histórico -->
+                    <div class="mb-6 bg-industrial-coal border border-industrial-800 rounded-xl overflow-hidden">
+                        <button onclick="toggleHistoryTab()" class="w-full flex justify-between items-center p-3 text-xs md:text-sm font-semibold text-amber-500 hover:bg-industrial-800/40 transition-colors">
+                            <span class="flex items-center gap-2">📖 Análisis de la Escuela de Economía Clásica</span>
+                            <svg id="history-arrow" class="w-4 h-4 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </button>
+                        <div id="history-content" class="hidden p-4 border-t border-industrial-800 text-xs md:text-sm text-slate-400 leading-relaxed">
+                            Las leyes de cercamiento forzaron el éxodo de millones de pequeños agricultores rurales hacia las crecientes ciudades manufactureras como Manchester, Leeds y Coketown, creando el "ejército de reserva industrial" de trabajadores que alimentarían las fábricas.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de Decisión -->
+                <div class="flex flex-col gap-3 mt-4" id="choices-container">
+                    <!-- Dinámico -->
+                </div>
+
+                <!-- Botón de Siguiente Turno -->
+                <div id="next-turn-container" class="hidden mt-6 pt-4 border-t border-industrial-800 flex justify-end">
+                    <button id="btn-next" onclick="nextDecade()" class="bg-amber-600 hover:bg-amber-500 text-slate-900 font-extrabold px-6 py-3 rounded-xl shadow-lg hover:shadow-amber-500/20 transition-all flex items-center gap-2">
+                        Avanzar a la Siguiente Época
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- COLUMNA DERECHA: MAPA DE LA CIUDAD INDUSTRIAL -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+            
+            <!-- CONTENEDOR DEL MAPA -->
+            <section class="bg-industrial-900 border border-industrial-700 rounded-2xl p-4 shadow-xl flex flex-col h-full">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-xs text-slate-400 uppercase tracking-widest font-bold flex items-center gap-2">
+                        <span>🏭 Mapa Urbano: Coketown</span>
+                    </h2>
+                    <span class="text-[10px] bg-industrial-coal px-2 py-1 rounded text-slate-400">Evolución en tiempo real</span>
+                </div>
+
+                <!-- Lienzo del Mapa SVG -->
+                <div class="relative flex-1 bg-[#1c221d] rounded-xl border border-industrial-800 overflow-hidden min-h-[350px] flex items-center justify-center">
+                    
+                    <!-- Capa de Humo de las Chimeneas -->
+                    <div id="smoke-container" class="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+                        <!-- Partículas de humo generadas por JS -->
+                    </div>
+
+                    <svg id="city-map-svg" viewBox="0 0 400 400" class="w-full h-full max-w-[400px] max-h-[400px]">
+                        <!-- RÍO DE LA CIUDAD -->
+                        <path id="river" d="M -10,120 Q 150,150 220,240 T 410,250" fill="none" stroke="#2563eb" stroke-width="28" class="river-flow" stroke-linecap="round"/>
+                        <path id="river-inner" d="M -10,120 Q 150,150 220,240 T 410,250" fill="none" stroke="#3b82f6" stroke-width="12" class="river-flow" stroke-linecap="round"/>
+
+                        <!-- Cuadrante Superior Izquierdo: Campo Común / Fábricas Textiles -->
+                        <g id="zone-textile" transform="translate(40, 40)">
+                            <rect id="zone-textile-bg" x="0" y="0" width="100" height="100" rx="12" fill="#2d5a27" class="transition-all duration-1000"/>
+                            <g id="zone-textile-rural">
+                                <circle cx="30" cy="40" r="12" fill="#1b4317"/>
+                                <circle cx="45" cy="55" r="10" fill="#1e461b"/>
+                                <circle cx="70" cy="30" r="15" fill="#1b4317"/>
+                            </g>
+                            <g id="zone-textile-industrial" class="opacity-0 transition-opacity duration-1000">
+                                <rect x="15" y="40" width="70" height="45" fill="#5c4e46" rx="3"/>
+                                <polygon points="15,40 30,25 45,40 60,25 75,40 85,40 85,85 15,85" fill="#4a3e37" />
+                                <rect x="30" y="55" width="10" height="15" fill="#f59e0b" />
+                                <rect x="55" y="55" width="10" height="15" fill="#f59e0b" />
+                                <rect x="70" y="10" width="12" height="40" fill="#3e332c"/>
+                                <rect x="68" y="8" width="16" height="5" fill="#d97706"/>
+                            </g>
+                        </g>
+
+                        <!-- Cuadrante Superior Derecho: Mansión / Zona Residencial -->
+                        <g id="zone-residential" transform="translate(260, 40)">
+                            <rect id="zone-res-bg" x="0" y="0" width="100" height="100" rx="12" fill="#2d5a27" class="transition-all duration-1000"/>
+                            <g id="zone-res-rural">
+                                <rect x="30" y="30" width="40" height="40" fill="#8f603c" rx="4"/>
+                                <polygon points="25,30 50,10 75,30" fill="#b91c1c"/>
+                                <circle cx="15" cy="75" r="10" fill="#1b4317"/>
+                                <circle cx="85" cy="75" r="12" fill="#1b4317"/>
+                            </g>
+                            <g id="zone-res-industrial" class="opacity-0 transition-opacity duration-1000">
+                                <rect x="10" y="20" width="35" height="30" fill="#4b5563"/>
+                                <polygon points="10,20 27,10 45,20" fill="#1f2937"/>
+                                <rect x="50" y="20" width="35" height="30" fill="#4b5563"/>
+                                <polygon points="50,20 67,10 85,20" fill="#1f2937"/>
+                                <rect x="10" y="55" width="35" height="30" fill="#4b5563"/>
+                                <polygon points="10,55 27,45 45,55" fill="#1f2937"/>
+                                <rect x="50" y="55" width="35" height="30" fill="#4b5563"/>
+                                <polygon points="50,55 67,45 85,55" fill="#1f2937"/>
+                            </g>
+                        </g>
+
+                        <!-- Cuadrante Inferior Izquierdo: Mina de Carbón y Vía Férrea -->
+                        <g id="zone-mining" transform="translate(40, 260)">
+                            <rect id="zone-mining-bg" x="0" y="0" width="100" height="100" rx="12" fill="#2d5a27" class="transition-all duration-1000"/>
+                            <g id="zone-mining-rural">
+                                <circle cx="50" cy="50" r="25" fill="#4c7c3c"/>
+                                <path d="M 30,65 Q 50,25 70,65" fill="none" stroke="#2a4d1e" stroke-width="4"/>
+                            </g>
+                            <g id="zone-mining-industrial" class="opacity-0 transition-opacity duration-1000">
+                                <line x1="50" y1="20" x2="25" y2="85" stroke="#374151" stroke-width="6"/>
+                                <line x1="50" y1="20" x2="75" y2="85" stroke="#374151" stroke-width="6"/>
+                                <line x1="30" y1="50" x2="70" y2="50" stroke="#374151" stroke-width="4"/>
+                                <circle cx="50" cy="30" r="10" fill="none" stroke="#f59e0b" stroke-width="3" class="animate-spin" style="transform-origin: 50px 30px;"/>
+                                <rect x="10" y="75" width="80" height="15" fill="#111827" rx="3"/>
+                            </g>
+                        </g>
+
+                        <!-- Cuadrante Inferior Derecho: Espacio Común / Reformas / Parque o Fábrica pesada -->
+                        <g id="zone-reforms" transform="translate(260, 260)">
+                            <rect id="zone-reforms-bg" x="0" y="0" width="100" height="100" rx="12" fill="#2d5a27" class="transition-all duration-1000"/>
+                            <g id="zone-reforms-rural">
+                                <circle cx="50" cy="50" r="30" fill="#3b7a30"/>
+                                <circle cx="35" cy="40" r="12" fill="#224d1a"/>
+                                <circle cx="65" cy="40" r="14" fill="#224d1a"/>
+                            </g>
+                            <g id="zone-reforms-industrial-bad" class="opacity-0 transition-opacity duration-1000">
+                                <rect x="15" y="30" width="70" height="55" fill="#374151" rx="3"/>
+                                <polygon points="15,30 35,15 55,30 75,15 85,30 85,85 15,85" fill="#1f2937" />
+                                <rect x="70" y="5" width="10" height="30" fill="#111827"/>
+                            </g>
+                            <g id="zone-reforms-industrial-good" class="opacity-0 transition-opacity duration-1000">
+                                <rect x="15" y="30" width="70" height="55" fill="#1e3a8a" rx="8" stroke="#3b82f6" stroke-width="3"/>
+                                <path d="M 50,45 L 50,65 M 40,55 L 60,55" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
+                                <text x="50" y="80" fill="#ffffff" font-size="10" text-anchor="middle" font-weight="bold">SANIDAD</text>
+                            </g>
+                        </g>
+
+                        <!-- VÍAS DE TREN -->
+                        <g id="zone-railway" class="opacity-0 transition-opacity duration-1000">
+                            <path d="M -10,195 L 410,195" fill="none" stroke="#4b5563" stroke-width="6"/>
+                            <path d="M -10,195 L 410,195" fill="none" stroke="#1f2937" stroke-width="4" stroke-dasharray="3 8"/>
+                        </g>
+                    </svg>
+
+                    <!-- Leyenda Rápida del Mapa -->
+                    <div class="absolute bottom-2 left-2 right-2 bg-industrial-coal/90 border border-industrial-800 rounded-lg p-2 text-[10px] flex justify-around text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-700 inline-block"></span> Rústico</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-[#4a3e37] inline-block"></span> Industrial</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-[#1e3a8a] inline-block"></span> Privado</span>
+                        <span class="flex items-center gap-1"><span id="legend-water-color" class="w-2.5 h-2.5 rounded bg-[#3b82f6] inline-block"></span> Río</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- PANELES INFORMATIVOS Y AYUDA DOCENTE -->
+    <section class="max-w-7xl w-full mx-auto px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-industrial-800 bg-industrial-900/40">
+        <div class="p-3 bg-industrial-coal/30 border border-industrial-800 rounded-xl">
+            <h4 class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">💡 Tips para el Docente</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Proyectá el simulador. Analizá cómo el crecimiento del capital y el respeto a la propiedad privada resuelven de forma pacífica y óptima los desafíos de la modernidad.</p>
+        </div>
+        <div class="p-3 bg-industrial-coal/30 border border-industrial-800 rounded-xl">
+            <h4 class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">🚨 Regulación vs Libertad</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">Si dejas que el <strong>Capital</strong> llegue a <strong>0%</strong> por exceso de impuestos o asfixia comercial, la simulación terminará por Quiebra General.</p>
+        </div>
+        <div class="p-3 bg-industrial-coal/30 border border-industrial-800 rounded-xl">
+            <h4 class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1">🎹 Efectos de Audio</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">El juego emite sonidos metálicos y de vapor en tiempo real. ¡Disfrutá del sonido del progreso industrial!</p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-industrial-800 bg-industrial-coal py-4 text-center text-xs text-slate-500 mt-auto">
+        <p>© 2026 Coketown Tycoon. Diseñado bajo una perspectiva histórica y económica clásica / liberal.</p>
+    </footer>
+
+    <!-- MODAL DE BIENVENIDA / INICIO -->
+    <div id="welcome-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+        <div class="bg-industrial-900 border border-industrial-700 max-w-lg w-full rounded-2xl p-6 md:p-8 shadow-2xl relative overflow-hidden">
+            <div class="absolute -right-12 -top-12 text-industrial-800/20 pointer-events-none transform rotate-12">
+                <svg class="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+            </div>
+            
+            <h2 class="text-3xl font-extrabold serif-title tracking-wider text-amber-500 mb-2">COKETOWN TYCOON</h2>
+            <p class="text-sm text-slate-400 mb-6 font-semibold uppercase tracking-widest border-b border-industrial-800 pb-3">El Desafío del Progreso y la Libertad de Mercado</p>
+            
+            <p class="text-slate-300 text-sm leading-relaxed mb-6">
+                Inglaterra, 1760. Asumes el timón del desarrollo de <strong>Coketown</strong>. Tu meta es impulsar la industrialización, garantizar la propiedad privada y abrir la economía al libre comercio global.
+                <br><br>
+                Demuestra cómo la inversión de capital privado y la adopción de nuevas tecnologías elevan de forma genuina y duradera la riqueza, la producción y el nivel de vida de la clase obrera sin necesidad de asfixiar el mercado con intervenciones ineficientes.
+            </p>
+
+            <button onclick="startGame()" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-900 font-extrabold text-lg py-4 rounded-xl shadow-lg hover:shadow-amber-500/20 transition-all flex items-center justify-center gap-2">
+                Comenzar Simulación
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE FIN DE JUEGO (VICTORIA / DERROTA) -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black/95 backdrop-blur-lg flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-industrial-900 border-2 border-industrial-700 max-w-2xl w-full rounded-2xl p-6 md:p-8 shadow-2xl text-center relative overflow-hidden">
+            
+            <h2 id="end-title" class="text-3xl md:text-4xl font-extrabold serif-title text-amber-500 mb-2">Fin del Viaje</h2>
+            <p id="end-subtitle" class="text-sm text-slate-400 mb-6 uppercase tracking-widest font-semibold">Veredicto Económico e Histórico</p>
+
+            <!-- Resumen Gráfico -->
+            <div class="flex justify-center my-6" id="end-icon-container">
+                <!-- Dinámico -->
+            </div>
+
+            <div id="end-description" class="text-slate-300 text-sm md:text-base leading-relaxed mb-8 max-w-lg mx-auto">
+                Descripción del destino de Coketown en base a los números finales.
+            </div>
+
+            <!-- Estadísticas de fin de juego -->
+            <div class="grid grid-cols-4 gap-2 max-w-md mx-auto mb-8 bg-industrial-coal border border-industrial-800 p-4 rounded-xl">
+                <div>
+                    <div class="text-xs text-slate-500 font-bold">Capital</div>
+                    <div id="end-stat-capital" class="text-lg font-extrabold text-emerald-400">50%</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-500 font-bold">Progreso</div>
+                    <div id="end-stat-progress" class="text-lg font-extrabold text-blue-400">10%</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-500 font-bold">Obreros</div>
+                    <div id="end-stat-wellbeing" class="text-lg font-extrabold text-rose-400">60%</div>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-500 font-bold">Ecología</div>
+                    <div id="end-stat-ecology" class="text-lg font-extrabold text-teal-400">90%</div>
+                </div>
+            </div>
+
+            <!-- Botón de Reinicio -->
+            <button onclick="resetGame()" class="bg-amber-600 hover:bg-amber-500 text-slate-900 font-extrabold px-8 py-4 rounded-xl shadow-lg hover:shadow-amber-500/20 transition-all text-lg flex items-center justify-center gap-2 mx-auto">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15H19" /></svg>
+                Reiniciar Simulación
+            </button>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT DEL SIMULADOR -->
+    <script>
+        // CONFIGURACIÓN DE AUDIO SINTETIZADO (Web Audio API)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'click') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'metal') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.45);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } else if (type === 'whistle') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(885, audioCtx.currentTime + 0.1);
+                osc.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.1);
+                gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.5);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.8);
+            } else if (type === 'gameover') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 1.2);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.3);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 1.3);
+            } else if (type === 'win') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(450, audioCtx.currentTime + 0.2);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.4);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.5);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.75);
+            }
+        }
+
+        // BASE DE DATOS DE DILEMAS HISTÓRICOS REBALANCEADOS
+        const DILEMMAS = [
+            {
+                year: "1760",
+                title: "Leyes de Cercamiento (Enclosures Acts)",
+                desc: "El Parlamento debate privatizar y cercar los campos comunales de los distritos rurales. Esto permitirá a los terratenientes invertir capital, aplicar nuevas técnicas agrarias e incrementar masivamente la producción de alimentos y materias primas.",
+                history: "La propiedad privada de la tierra incentivó la inversión en el campo. Aunque causó una migración hacia las ciudades, la mayor eficiencia agrícola permitió alimentar a una población urbana en rápido crecimiento, creando las bases de la sociedad moderna.",
+                choices: [
+                    {
+                        text: "Apoyar las leyes de cercamiento (Garantizar la Propiedad Privada)",
+                        consequences: { capital: 20, progress: 20, wellbeing: 5, ecology: -5 },
+                        feedback: "¡Aprobado! Los derechos de propiedad incentivan la inversión. La productividad agrícola se dispara, generando un excedente de alimentos. Los trabajadores migran a las ciudades atraídos por las nuevas oportunidades de empleo industrial."
+                    },
+                    {
+                        text: "Mantener el sistema feudal/comunal tradicional",
+                        consequences: { capital: -15, progress: -10, wellbeing: -5, ecology: 5 },
+                        feedback: "Decidís proteger el viejo sistema. Se evita la migración forzada, pero la producción de alimentos se estanca. Sin capitalización rural, la economía de Coketown pierde dinamismo frente a sus competidoras."
+                    }
+                ]
+            },
+            {
+                year: "1780",
+                title: "La Máquina de Vapor de James Watt",
+                desc: "Se perfecciona la máquina de vapor. Los empresarios quieren instalar motores a carbón para multiplicar la velocidad del tejido. Esto abaratará el calzado y la vestimenta para toda la población, aunque generará emisiones de humo en la zona fabril.",
+                history: "La máquina de vapor redujo drásticamente los costos de producción. Bienes que antes eran lujos exclusivos de la aristocracia pasaron a ser accesibles para las masas, elevando el consumo real de los trabajadores.",
+                choices: [
+                    {
+                        text: "Permitir la libre adopción del vapor e industrializar",
+                        consequences: { capital: 25, progress: 30, wellbeing: 15, ecology: -25 },
+                        feedback: "¡Éxito rotundo! La producción en masa abarata la ropa para los propios obreros. Coketown crece con fuerza. El aire muestra los efectos del carbón, pero el dinamismo económico genera riqueza y empleo formal."
+                    },
+                    {
+                        text: "Restringir el uso del vapor por regulaciones ambientales",
+                        consequences: { capital: -10, progress: -15, wellbeing: -10, ecology: 20 },
+                        feedback: "Preservás el aire limpio, pero la industria local pierde competitividad. Al no poder mecanizar, las fábricas quiebran o se mudan, provocando desempleo real y encareciendo los bienes básicos."
+                    }
+                ]
+            },
+            {
+                year: "1800",
+                title: "Regulación de las Jornadas de Trabajo",
+                desc: "El parlamento debate fijar por ley las horas de trabajo. Los industriales advierten que una regulación rígida reducirá la producción, bajará los salarios netos de los obreros que quieren trabajar más y quitará competitividad internacional a la nación.",
+                history: "Muchos economistas clásicos argumentaban que los salarios estaban determinados por la productividad. Una reducción forzada de horas sin aumento de eficiencia podía terminar disminuyendo los ingresos reales de las familias trabajadoras.",
+                choices: [
+                    {
+                        text: "Mantener la libertad de contratación (Acuerdos Libres)",
+                        consequences: { capital: 20, progress: 15, wellbeing: -5, ecology: 0 },
+                        feedback: "La industria opera a máxima capacidad y las ganancias se reinvierten en tecnología. Aunque las jornadas siguen siendo largas, el aumento sostenido de la productividad genera una tendencia al alza en los salarios reales."
+                    },
+                    {
+                        text: "Imponer regulaciones horarias estatales estrictas",
+                        consequences: { capital: -20, progress: -10, wellbeing: 10, ecology: 5 },
+                        feedback: "Se reducen las horas de trabajo, pero la producción total cae. Para compensar los costos, los empresarios se ven obligados a congelar contrataciones o reducir los salarios por hora, afectando el poder adquisitivo."
+                    }
+                ]
+            },
+            {
+                year: "1811",
+                title: "La Revuelta Ludista (Ataque a la Tecnología)",
+                desc: "Grupos de tejedores manuales asaltan las fábricas y destruyen los telares mecánicos bajo el argumento de que las máquinas 'roban puestos de trabajo'. ¿Cómo actuarás ante el ataque a la propiedad privada?",
+                history: "El ludismo temía que la tecnología generara desempleo permanente. Sin embargo, la historia demostró lo contrario: la destrucción creativa destruye empleos obsoletos pero crea mercados e industrias completamente nuevos y más calificados.",
+                choices: [
+                    {
+                        text: "Defender la ley, la propiedad privada y el avance tecnológico",
+                        consequences: { capital: 15, progress: 20, wellbeing: 5, ecology: 0 },
+                        feedback: "Se restablece el orden. La inversión en maquinaria continúa. Los tejedores se reconvierten a mecánicos o transportistas en las nuevas industrias derivadas, demostrando los beneficios de la destrucción creativa."
+                    },
+                    {
+                        text: "Ceder ante las demandas y limitar el uso de maquinaria moderna",
+                        consequences: { capital: -15, progress: -25, wellbeing: -5, ecology: 0 },
+                        feedback: "Protegés los empleos antiguos artificialmente. El progreso tecnológico se congela en Coketown, impidiendo el nacimiento de nuevas industrias y condenando a la ciudad al estancamiento económico."
+                    }
+                ]
+            },
+            {
+                year: "1832",
+                title: "Infraestructura Urbana y Gestión del Agua",
+                desc: "El crecimiento urbano genera problemas de saneamiento. Los empresarios proponen crear empresas privadas de servicios públicos para tender redes de agua limpia y cobrar tarifas eficientes, mientras otros exigen un impuesto general obligatorio.",
+                history: "Durante el siglo XIX, muchas de las grandes innovaciones en infraestructuras y transportes (como los ferrocarriles y el suministro de gas) fueron financiadas e impulsadas por el capital privado buscando rentabilidad y eficiencia.",
+                choices: [
+                    {
+                        text: "Fomentar la inversión privada y concesiones de infraestructura",
+                        consequences: { capital: 15, progress: 20, wellbeing: 15, ecology: 15 },
+                        feedback: "El capital privado responde con rapidez. Se construyen redes de agua eficientes financiadas por inversores. La salud urbana mejora sin necesidad de asfixiar la economía con impuestos estatales directos."
+                    },
+                    {
+                        text: "Crear un impuesto masivo a la industria para obras estatales",
+                        consequences: { capital: -25, progress: -5, wellbeing: 5, ecology: 20 },
+                        feedback: "Se inicia la obra pública, pero la enorme carga impositiva retira liquidez del mercado. Las fábricas reducen sus presupuestos de innovación y se frena la creación de nuevos empleos."
+                    }
+                ]
+            },
+            {
+                year: "1850",
+                title: "El Ascenso del Libre Comercio (Leyes de Granos)",
+                desc: "Se debate la abolición total de los aranceles de importación (Corn Laws). Los defensores del libre mercado buscan abrir las fronteras para importar alimentos baratos, lo que beneficiará tanto a industriales como a la clase trabajadora.",
+                history: "La derogación de las Leyes de Granos en 1846 marcó el triunfo del liberalismo económico en Gran Bretaña. Impulsada por la Escuela de Manchester (Richard Cobden), demostró que el libre comercio internacional reduce el coste de vida y fomenta la paz entre naciones.",
+                choices: [
+                    {
+                        text: "Aprobar el Libre Comercio absoluto (Derogar aranceles)",
+                        consequences: { capital: 25, progress: 15, wellbeing: 25, ecology: 5 },
+                        feedback: "¡Victoria del Liberalismo! El precio de los alimentos se desploma, aumentando el salario real de todos los trabajadores. Coketown se integra al mercado mundial, exportando manufacturas e importando bienes eficientes."
+                    },
+                    {
+                        text: "Mantener aranceles proteccionistas para favorecer a los terratenientes",
+                        consequences: { capital: -15, progress: -10, wellbeing: -20, ecology: -5 },
+                        feedback: "El proteccionismo mantiene los precios de los alimentos artificialmente altos. La clase obrera pierde poder adquisitivo y las naciones extranjeras responden con represalias comerciales contra tus manufacturas."
+                    }
+                ]
+            }
+        ];
+
+        // VARIABLES DE ESTADO DEL JUEGO
+        let state = {
+            decadeIndex: 0,
+            capital: 50,
+            progress: 10,
+            wellbeing: 60,
+            ecology: 90,
+            decisionsHistory: [],
+            railwayBuilt: false,
+            reformsBuilt: false,
+            badReformsBuilt: false
+        };
+
+        // INICIAR JUEGO
+        function startGame() {
+            playSound('whistle');
+            document.getElementById('welcome-modal').classList.add('hidden');
+            renderCurrentDilemma();
+            updateStatsUI();
+            updateMapGraphics();
+        }
+
+        // CONTROL DE RECURSOS Y LÍMITES
+        function updateStatsUI() {
+            state.capital = Math.max(0, Math.min(100, state.capital));
+            state.progress = Math.max(0, Math.min(100, state.progress));
+            state.wellbeing = Math.max(0, Math.min(100, state.wellbeing));
+            state.ecology = Math.max(0, Math.min(100, state.ecology));
+
+            document.getElementById('stat-val-capital').innerText = state.capital + '%';
+            document.getElementById('stat-val-progress').innerText = state.progress + '%';
+            document.getElementById('stat-val-wellbeing').innerText = state.wellbeing + '%';
+            document.getElementById('stat-val-ecology').innerText = state.ecology + '%';
+
+            document.getElementById('stat-bar-capital').style.width = state.capital + '%';
+            document.getElementById('stat-bar-progress').style.width = state.progress + '%';
+            document.getElementById('stat-bar-wellbeing').style.width = state.wellbeing + '%';
+            document.getElementById('stat-bar-ecology').style.width = state.ecology + '%';
+
+            if (state.capital <= 0) {
+                triggerGameOver("bankruptcy");
+            } else if (state.wellbeing <= 0) {
+                triggerGameOver("revolution");
+            } else if (state.ecology <= 0) {
+                triggerGameOver("plague");
+            }
+        }
+
+        // RENDER DE DILEMAS
+        function renderCurrentDilemma() {
+            if (state.decadeIndex >= DILEMMAS.length) {
+                triggerVictory();
+                return;
+            }
+
+            const dilemma = DILEMMAS[state.decadeIndex];
+            
+            document.getElementById('current-decade-label').innerText = dilemma.year;
+            document.getElementById('dilemma-year').innerText = "Año: " + dilemma.year;
+            document.getElementById('dilemma-title').innerText = dilemma.title;
+            document.getElementById('dilemma-desc').innerText = dilemma.desc;
+            document.getElementById('history-content').innerText = dilemma.history;
+
+            const historyContent = document.getElementById('history-content');
+            const historyArrow = document.getElementById('history-arrow');
+            historyContent.classList.add('hidden');
+            historyArrow.classList.remove('rotate-180');
+
+            const container = document.getElementById('choices-container');
+            container.innerHTML = "";
+
+            dilemma.choices.forEach((choice, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 bg-industrial-coal hover:bg-industrial-800 border border-industrial-800 hover:border-industrial-copper rounded-xl transition-all duration-300 group flex justify-between items-center gap-4";
+                btn.onclick = () => selectChoice(index);
+                
+                btn.innerHTML = `
+                    <div class="flex-1">
+                        <p class="text-sm md:text-base font-semibold text-slate-100 group-hover:text-amber-500 transition-colors">${choice.text}</p>
+                    </div>
+                    <div class="p-2 bg-industrial-900 rounded-lg text-slate-500 group-hover:text-amber-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </div>
+                `;
+                container.appendChild(btn);
+            });
+
+            document.getElementById('next-turn-container').classList.add('hidden');
+        }
+
+        function selectChoice(index) {
+            playSound('metal');
+            const dilemma = DILEMMAS[state.decadeIndex];
+            const choice = dilemma.choices[index];
+
+            state.capital += choice.consequences.capital;
+            state.progress += choice.consequences.progress;
+            state.wellbeing += choice.consequences.wellbeing;
+            state.ecology += choice.consequences.ecology;
+
+            state.decisionsHistory.push({
+                decade: dilemma.year,
+                title: dilemma.title,
+                choiceText: choice.text,
+                isProCapitalist: choice.consequences.capital > 0
+            });
+
+            if (dilemma.year === "1780" && index === 0) {
+                state.railwayBuilt = true;
+            }
+            if (dilemma.year === "1832") {
+                if (index === 0) {
+                    state.reformsBuilt = true;
+                    state.badReformsBuilt = false;
+                } else {
+                    state.reformsBuilt = false;
+                    state.badReformsBuilt = true;
+                }
+            }
+
+            const container = document.getElementById('choices-container');
+            container.innerHTML = `
+                <div class="bg-industrial-copper/10 border border-industrial-copper/40 p-4 rounded-xl text-sm leading-relaxed text-amber-500">
+                    <p class="font-bold mb-1">Resultado de tu elección:</p>
+                    <p class="text-slate-200">${choice.feedback}</p>
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                        <span class="${choice.consequences.capital >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">Capital: ${choice.consequences.capital >= 0 ? '+' : ''}${choice.consequences.capital}%</span>
+                        <span class="${choice.consequences.progress >= 0 ? 'text-blue-400' : 'text-rose-400'} font-bold">Progreso: ${choice.consequences.progress >= 0 ? '+' : ''}${choice.consequences.progress}%</span>
+                        <span class="${choice.consequences.wellbeing >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold">Obreros: ${choice.consequences.wellbeing >= 0 ? '+' : ''}${choice.consequences.wellbeing}%</span>
+                        <span class="${choice.consequences.ecology >= 0 ? 'text-teal-400' : 'text-rose-400'} font-bold">Ecología: ${choice.consequences.ecology >= 0 ? '+' : ''}${choice.consequences.ecology}%</span>
+                    </div>
+                </div>
+            `;
+
+            updateStatsUI();
+            updateMapGraphics();
+            document.getElementById('next-turn-container').classList.remove('hidden');
+        }
+
+        function nextDecade() {
+            playSound('click');
+            state.decadeIndex++;
+            renderCurrentDilemma();
+        }
+
+        // ALTERNAR ACORDEÓN DE CONTEXTO HISTÓRICO
+        function toggleHistoryTab() {
+            playSound('click');
+            const historyContent = document.getElementById('history-content');
+            const historyArrow = document.getElementById('history-arrow');
+            
+            if (historyContent.classList.contains('hidden')) {
+                historyContent.classList.remove('hidden');
+                historyArrow.classList.add('rotate-180');
+            } else {
+                historyContent.classList.add('hidden');
+                historyArrow.classList.remove('rotate-180');
+            }
+        }
+
+        function updateMapGraphics() {
+            const isTextileIndustrial = state.decadeIndex > 0;
+            const isResidentialIndustrial = state.decadeIndex > 1;
+
+            if (isTextileIndustrial) {
+                document.getElementById('zone-textile-bg').setAttribute('fill', '#4b3e37');
+                document.getElementById('zone-textile-rural').classList.add('opacity-0');
+                document.getElementById('zone-textile-industrial').classList.remove('opacity-0');
+            } else {
+                document.getElementById('zone-textile-bg').setAttribute('fill', '#2d5a27');
+                document.getElementById('zone-textile-rural').classList.remove('opacity-0');
+                document.getElementById('zone-textile-industrial').classList.add('opacity-0');
+            }
+
+            if (isResidentialIndustrial) {
+                document.getElementById('zone-res-bg').setAttribute('fill', '#5c4e46');
+                document.getElementById('zone-res-rural').classList.add('opacity-0');
+                document.getElementById('zone-res-industrial').classList.remove('opacity-0');
+            } else {
+                document.getElementById('zone-res-bg').setAttribute('fill', '#2d5a27');
+                document.getElementById('zone-res-rural').classList.remove('opacity-0');
+                document.getElementById('zone-res-industrial').classList.add('opacity-0');
+            }
+
+            if (state.decadeIndex > 2) {
+                document.getElementById('zone-mining-bg').setAttribute('fill', '#111827');
+                document.getElementById('zone-mining-rural').classList.add('opacity-0');
+                document.getElementById('zone-mining-industrial').classList.remove('opacity-0');
+            } else {
+                document.getElementById('zone-mining-bg').setAttribute('fill', '#2d5a27');
+                document.getElementById('zone-mining-rural').classList.remove('opacity-0');
+                document.getElementById('zone-mining-industrial').classList.add('opacity-0');
+            }
+
+            if (state.reformsBuilt) {
+                document.getElementById('zone-reforms-bg').setAttribute('fill', '#1e293b');
+                document.getElementById('zone-reforms-rural').classList.add('opacity-0');
+                document.getElementById('zone-reforms-industrial-bad').classList.add('opacity-0');
+                document.getElementById('zone-reforms-industrial-good').classList.remove('opacity-0');
+            } else if (state.badReformsBuilt) {
+                document.getElementById('zone-reforms-bg').setAttribute('fill', '#334155');
+                document.getElementById('zone-reforms-rural').classList.add('opacity-0');
+                document.getElementById('zone-reforms-industrial-bad').classList.remove('opacity-0');
+                document.getElementById('zone-reforms-industrial-good').classList.add('opacity-0');
+            } else {
+                document.getElementById('zone-reforms-bg').setAttribute('fill', '#2d5a27');
+                document.getElementById('zone-reforms-rural').classList.remove('opacity-0');
+                document.getElementById('zone-reforms-industrial-bad').classList.add('opacity-0');
+                document.getElementById('zone-reforms-industrial-good').classList.add('opacity-0');
+            }
+
+            if (state.railwayBuilt) {
+                document.getElementById('zone-railway').classList.remove('opacity-0');
+            } else {
+                document.getElementById('zone-railway').classList.add('opacity-0');
+            }
+
+            const river = document.getElementById('river');
+            const riverInner = document.getElementById('river-inner');
+            const legendWater = document.getElementById('legend-water-color');
+            
+            if (state.ecology > 70) {
+                river.setAttribute('stroke', '#2563eb');
+                riverInner.setAttribute('stroke', '#3b82f6');
+                legendWater.className = "w-2.5 h-2.5 rounded bg-blue-500 inline-block";
+            } else if (state.ecology > 40) {
+                river.setAttribute('stroke', '#0d9488');
+                riverInner.setAttribute('stroke', '#0f766e');
+                legendWater.className = "w-2.5 h-2.5 rounded bg-teal-600 inline-block";
+            } else {
+                river.setAttribute('stroke', '#78350f');
+                riverInner.setAttribute('stroke', '#451a03');
+                legendWater.className = "w-2.5 h-2.5 rounded bg-amber-900 inline-block";
+            }
+
+            const smokeContainer = document.getElementById('smoke-container');
+            smokeContainer.innerHTML = "";
+            
+            const polutionFactor = 100 - state.ecology;
+            const smokeCount = Math.floor(polutionFactor / 15);
+
+            for (let i = 0; i < smokeCount; i++) {
+                const smokeDiv = document.createElement('div');
+                smokeDiv.className = `absolute bg-slate-500/30 blur-md rounded-full smoke-particle smoke-${(i%3)+1}`;
+                smokeDiv.style.width = '40px';
+                smokeDiv.style.height = '40px';
+                smokeDiv.style.top = `${30 + (i * 20)}px`;
+                smokeDiv.style.left = `${60 + (i * 35)}px`;
+                smokeContainer.appendChild(smokeDiv);
+            }
+        }
+
+        function triggerGameOver(reason) {
+            playSound('gameover');
+            const modal = document.getElementById('game-over-modal');
+            const endTitle = document.getElementById('end-title');
+            const endIconContainer = document.getElementById('end-icon-container');
+            const endDesc = document.getElementById('end-description');
+
+            document.getElementById('end-stat-capital').innerText = state.capital + '%';
+            document.getElementById('end-stat-progress').innerText = state.progress + '%';
+            document.getElementById('end-stat-wellbeing').innerText = state.wellbeing + '%';
+            document.getElementById('end-stat-ecology').innerText = state.ecology + '%';
+
+            if (reason === "bankruptcy") {
+                endTitle.innerText = "🛑 Quiebra Comercial";
+                endTitle.className = "text-3xl md:text-4xl font-extrabold serif-title text-rose-500 mb-2";
+                endIconContainer.innerHTML = `
+                    <div class="p-4 bg-rose-500/20 border-2 border-rose-500 rounded-full text-rose-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
+                `;
+                endDesc.innerText = "La falta de rentabilidad y las trabas al comercio ahogaron tus industrias antes de que pudieran despegar. Coketown quedó rezagada frente al mercado global.";
+            } else if (reason === "revolution") {
+                endTitle.innerText = "🚩 Conflicto Civil / Inestabilidad";
+                endTitle.className = "text-3xl md:text-4xl font-extrabold serif-title text-red-500 mb-2";
+                endIconContainer.innerHTML = `
+                    <div class="p-4 bg-red-500/20 border-2 border-red-500 rounded-full text-red-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" /></svg>
+                    </div>
+                `;
+                endDesc.innerText = "Las fricciones sociales paralizaron la producción. Las huelgas masivas y la falta de incentivos al desarrollo detuvieron el motor industrial de la ciudad.";
+            } else if (reason === "plague") {
+                endTitle.innerText = "☣️ Emergencia Sanitaria";
+                endTitle.className = "text-3xl md:text-4xl font-extrabold serif-title text-teal-500 mb-2";
+                endIconContainer.innerHTML = `
+                    <div class="p-4 bg-teal-500/20 border-2 border-teal-500 rounded-full text-teal-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                `;
+                endDesc.innerText = "La falta de soluciones tecnológicas eficientes para canalizar los desechos urbanos provocó una epidemia de cólera, diezmando la fuerza laboral de la metrópoli.";
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function triggerVictory() {
+            playSound('win');
+            const modal = document.getElementById('game-over-modal');
+            const endTitle = document.getElementById('end-title');
+            const endIconContainer = document.getElementById('end-icon-container');
+            const endDesc = document.getElementById('end-description');
+
+            const proCapitalCount = state.decisionsHistory.filter(d => d.isProCapitalist).length;
+            let profileTitle = "";
+            let profileDesc = "";
+            let iconSvg = "";
+
+            if (proCapitalCount >= 5) {
+                profileTitle = "🏭 Capitán de la Industria (Pionero del Progreso Liberal)";
+                iconSvg = `
+                    <div class="p-4 bg-amber-500/20 border-2 border-amber-500 rounded-full text-amber-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                `;
+                profileDesc = "¡Excelente gestión del crecimiento! Al garantizar la propiedad privada y el libre comercio, lograste que Coketown multiplicara su riqueza. La abundancia y la bajada de costes de los bienes esenciales demostraron que el capitalismo es la herramienta más eficaz para superar el estancamiento histórico.";
+            } else if (proCapitalCount >= 3) {
+                profileTitle = "⚖️ El Planificador Equilibrado (Economía Clásica)";
+                iconSvg = `
+                    <div class="p-4 bg-blue-500/20 border-2 border-blue-500 rounded-full text-blue-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    </div>
+                `;
+                profileDesc = "Mantuviste un rumbo estable, permitiendo el crecimiento industrial pero aceptando ciertas regulaciones intermedias cuando la opinión pública presionaba. Coketown es próspera y equilibrada.";
+            } else {
+                profileTitle = "🕊️ Intervencionista Estatal (Regulador de Mercados)";
+                iconSvg = `
+                    <div class="p-4 bg-emerald-500/20 border-2 border-emerald-500 rounded-full text-emerald-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.871 4A17.926 17.926 0 003 12c0 2.11.364 4.133 1.028 6m.503-12.008a17.947 17.947 0 0112.518-4.085m5.11 5.278c.55 1.617.86 3.359.86 5.172 0 3.997-1.398 7.667-3.72 10.518m-5.11-15.79c-.55 1.617-.86 3.359-.86 5.172 0 1.954.364 3.799 1.028 5.486m-1.028-5.486a17.947 17.947 0 0112.518-4.085M15 19.141A17.91 17.91 0 0112 20c-1.954 0-3.799-.364-5.486-1.028" /></svg>
+                    </div>
+                `;
+                profileDesc = "Priorizaste el control estatal por encima de la libertad comercial. Coketown no alcanzó su potencial de riqueza e innovación tecnológica debido a las fuertes trabas del gobierno, aunque las instituciones estatales controlan el mapa.";
+            }
+
+            endTitle.innerText = "🏆 ¡Simulación Completada!";
+            endTitle.className = "text-3xl md:text-4xl font-extrabold serif-title text-emerald-500 mb-2";
+            endIconContainer.innerHTML = iconSvg;
+            
+            endDesc.innerHTML = `
+                <div class="mb-4 font-bold text-amber-500 text-lg">${profileTitle}</div>
+                <p class="text-slate-300 text-sm md:text-base leading-relaxed">${profileDesc}</p>
+                <div class="mt-4 p-3 bg-industrial-coal rounded border border-industrial-800 text-xs text-slate-400 text-left">
+                    <strong>Pauta de debate pedagógico:</strong> Analizá cómo las decisiones de libre mercado (como la derogación de aranceles o la defensa de la propiedad intelectual) impactaron positivamente a largo plazo en los marcadores de la ciudad.
+                </div>
+            `;
+
+            document.getElementById('end-stat-capital').innerText = state.capital + '%';
+            document.getElementById('end-stat-progress').innerText = state.progress + '%';
+            document.getElementById('end-stat-wellbeing').innerText = state.wellbeing + '%';
+            document.getElementById('end-stat-ecology').innerText = state.ecology + '%';
+
+            modal.classList.remove('hidden');
+        }
+
+        function resetGame() {
+            playSound('whistle');
+            state = {
+                decadeIndex: 0,
+                capital: 50,
+                progress: 10,
+                wellbeing: 60,
+                ecology: 90,
+                decisionsHistory: [],
+                railwayBuilt: false,
+                reformsBuilt: false,
+                badReformsBuilt: false
+            };
+            document.getElementById('game-over-modal').classList.add('hidden');
+            renderCurrentDilemma();
+            updateStatsUI();
+            updateMapGraphics();
+        }
+
+        window.onload = function() {
+            updateMapGraphics();
+        };
+    </script>
+</body>
+</html>
